@@ -73,8 +73,9 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
     private lateinit var email: String
     private lateinit var age: String
     private lateinit var gender: String
-    private var isEditable = true
     private val emergencyContactList = mutableListOf<String>()
+
+    private var isEditable = true
 
     private val emergencyAddButton: Button by lazy {
         findViewById(R.id.emergency_contact_addButton)
@@ -224,7 +225,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
 
         /** sideBar */
-        drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
+        drawerLayout = findViewById(R.id.drawer_layout)
         clickAndOpenSideBar()
         sideBarInnerAction()
 
@@ -248,7 +249,6 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
             return
         }
 
-
         lifecycleScope.launch {
             val userInfo = userprofileViewModel.loadStoredData(email)
 
@@ -270,21 +270,25 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun addEmergencyContact(emergencyContacts: LinearLayout, emergencyContact: String) {
+    private fun addEmergencyContact(
+        emergencyContacts: LinearLayout,
+        emergencyContactNumber: String
+    ) {
         val inflater = LayoutInflater.from(this)
-        val eContact =
+        val emergencyContact =
             inflater.inflate(R.layout.emergency_contact_item, emergencyContacts, false) as EditText
 
-        eContact.addTextChangedListener {
+        emergencyContact.addTextChangedListener {
             Log.d("[로그]", "emergencyContact changed")
             saveButton.isEnabled = true
 
-            eContact.setOnTouchListener { v, event ->
+            emergencyContact.setOnTouchListener { v, event ->
                 if (event.action == MotionEvent.ACTION_UP && isEditable) {
+                    val eContact = v as EditText
                     eContact.isFocusable = true
                     eContact.isFocusableInTouchMode = true
                     val clearDrawable = eContact.compoundDrawablesRelative[2]
-                    if (clearDrawable != null && event.rawX >= (eContact.right - clearDrawable.bounds.width())) {
+                    if (event.rawX >= (v.right - clearDrawable.bounds.width())) {
                         eContact.setText("")
                         return@setOnTouchListener true
                     }
@@ -292,8 +296,8 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                 false
             }
         }
-        eContact.setText(emergencyContact)
-        emergencyContacts.addView(eContact, emergencyContacts.childCount - 1)
+        emergencyContact.setText(emergencyContactNumber)
+        emergencyContacts.addView(emergencyContact, emergencyContacts.childCount - 1)
     }
 
 
@@ -382,7 +386,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                 checkBluetoothEnabledState {
                     lifecycleScope.launch {
                         if (isServiceRunning()) {
-                            suspendCoroutine<Unit> { continuation ->
+                            suspendCoroutine { continuation ->
                                 val filter = IntentFilter("SERVICE_STOPPED")
                                 val serviceStoppedReceiver = object : BroadcastReceiver() {
                                     override fun onReceive(context: Context?, intent: Intent?) {
@@ -428,7 +432,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
             if (isServiceRunning()) {
                 lifecycleScope.launch {
-                    suspendCoroutine<Unit> { continuation ->
+                    suspendCoroutine { continuation ->
                         val filter = IntentFilter("SERVICE_STOPPED")
 
                         val serviceStoppedReceiver = object : BroadcastReceiver() {
