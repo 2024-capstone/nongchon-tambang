@@ -7,6 +7,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -14,6 +15,8 @@ import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -50,6 +53,7 @@ import com.capstone.nongchown.Utils.showToast
 import com.capstone.nongchown.ViewModel.BluetoothViewModel
 import com.capstone.nongchown.ViewModel.UserProfileViewModel
 import com.google.android.material.navigation.NavigationView
+import com.google.api.Distribution.BucketOptions.Linear
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -88,8 +92,8 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         enableEdgeToEdge()
         setContentView(R.layout.activity_user_profile)
 
-
         pageScroll = findViewById(R.id.user_profile_scroll)
+        addGlobalLayoutListener()
 
         val userName = findViewById<EditText>(R.id.user_name)
         userName.addTextChangedListener {
@@ -130,14 +134,19 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
         val emergencyContacts = findViewById<LinearLayout>(R.id.emergency_contact_list)
 
+        setupFocusChangeListeners(userName)
+        setupFocusChangeListeners(userEmail)
+        setupFocusChangeListeners(userAge)
+        setupFocusChangeListeners(userGender)
+
         emergencyAddButton.setOnClickListener {
             addEmergencyContact(emergencyContacts, "")
         }
 
         saveButton.setOnClickListener {
             try {
-                if(isEditble){
-                    saveButton.text="수정하기"
+                if (isEditble) {
+                    saveButton.text = "수정하기"
                     Log.d("[로그]", "저장 버튼 클릭")
                     emergencyContactList.clear()
                     for (i in emergencyContacts.childCount - 1 downTo 0) {
@@ -154,7 +163,11 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
                     val userInfo = UserProfileViewModel().userProfileSave(
                         UserInfo(
-                            userName.text.toString(), userEmail.text.toString(), userAge.text.toString(), userGender.selectedItem.toString(), emergencyContactList
+                            userName.text.toString(),
+                            userEmail.text.toString(),
+                            userAge.text.toString(),
+                            userGender.selectedItem.toString(),
+                            emergencyContactList
                         )
                     )
                     name = userInfo.name
@@ -179,21 +192,21 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                     editor.putString("ID", email)
                     editor.apply()
 
-                    isEditble=false
-                    userName.isFocusable=isEditble
+                    isEditble = false
+                    userName.isFocusable = isEditble
                     userEmail.isFocusable = isEditble
-                    userAge.isFocusable=isEditble
-                    emergencyAddButton.isEnabled=isEditble
-                } else{
-                    saveButton.text="저장하기"
-                    isEditble=true
-                    userName.isFocusable=isEditble
+                    userAge.isFocusable = isEditble
+                    emergencyAddButton.isEnabled = isEditble
+                } else {
+                    saveButton.text = "저장하기"
+                    isEditble = true
+                    userName.isFocusable = isEditble
                     userName.isFocusableInTouchMode = isEditble
                     userEmail.isFocusable = isEditble
                     userEmail.isFocusableInTouchMode = isEditble
-                    userAge.isFocusable=isEditble
+                    userAge.isFocusable = isEditble
                     userAge.isFocusableInTouchMode = isEditble
-                    emergencyAddButton.isEnabled=isEditble
+                    emergencyAddButton.isEnabled = isEditble
 
                     saveButton.isEnabled = false
 
@@ -222,8 +235,47 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
     }
 
+    private fun addGlobalLayoutListener() {
+        pageScroll.viewTreeObserver.addOnGlobalLayoutListener(object :
+            ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                val eLinear = findViewById<LinearLayout>(R.id.emergency_contact_list)
+
+                val rect = Rect()
+                pageScroll.getWindowVisibleDisplayFrame(rect)
+                val screenHeight = pageScroll.rootView.height
+                val keypadHeight = screenHeight - rect.bottom
+
+                eLinear.setPadding(0, 0, 0, keypadHeight)
+            }
+        })
+    }
+
+
+    private fun setupFocusChangeListeners(view: View) {
+        view.setOnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) {
+                pageScroll.scrollTo(0, view.top)
+            }
+        }
+    }
+
+    private fun scrollToView(view: View) {
+        pageScroll.post {
+            val rect = Rect()
+            view.getGlobalVisibleRect(rect)
+            val targetY = rect.top - (pageScroll.height / 2)
+            pageScroll.smoothScrollTo(0, targetY)
+        }
+    }
+
+
     private fun initUserInfo(
-        userName: EditText, userEmail: EditText, userAge: EditText, userGender: Spinner, emergencyContacts: LinearLayout
+        userName: EditText,
+        userEmail: EditText,
+        userAge: EditText,
+        userGender: Spinner,
+        emergencyContacts: LinearLayout
     ) {
 
         Log.d("[로그]", "initializing")
@@ -231,8 +283,8 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         val sharedPreferences = getSharedPreferences("user", Context.MODE_PRIVATE)
         val userID = sharedPreferences.getString("ID", "")
         email = userID.toString()
-        if(email==""){
-            saveButton.text="저장하기"
+        if (email == "") {
+            saveButton.text = "저장하기"
             return
         }
 
@@ -247,11 +299,11 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
             for (i: Int in 0..<userInfo.emergencyContactList.size) {
                 addEmergencyContact(emergencyContacts, userInfo.emergencyContactList[i])
             }
-            isEditble=false
-            userName.isFocusable=isEditble
+            isEditble = false
+            userName.isFocusable = isEditble
             userEmail.isFocusable = isEditble
-            userAge.isFocusable=isEditble
-            saveButton.text= "수정하기"
+            userAge.isFocusable = isEditble
+            saveButton.text = "수정하기"
 
         }
         Log.d("[로그]", "initializing complete")
@@ -260,7 +312,8 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
     @SuppressLint("ClickableViewAccessibility")
     private fun addEmergencyContact(emergencyContacts: LinearLayout, emergencyContact: String) {
         val inflater = LayoutInflater.from(this)
-        val eContact = inflater.inflate(R.layout.emergency_contact_item, emergencyContacts, false) as EditText
+        val eContact =
+            inflater.inflate(R.layout.emergency_contact_item, emergencyContacts, false) as EditText
 
         eContact.addTextChangedListener {
             Log.d("[로그]", "emergencyContact changed")
@@ -268,7 +321,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
             eContact.setOnTouchListener { v, event ->
                 if (event.action == MotionEvent.ACTION_UP && isEditble) {
-                    eContact.isFocusable=true
+                    eContact.isFocusable = true
                     eContact.isFocusableInTouchMode = true
                     val clearDrawable = eContact.compoundDrawablesRelative[2]
                     if (clearDrawable != null && event.rawX >= (eContact.right - clearDrawable.bounds.width())) {
@@ -281,6 +334,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
         eContact.setText(emergencyContact)
         emergencyContacts.addView(eContact, emergencyContacts.childCount - 1)
+        setupFocusChangeListeners(eContact)
     }
 
 
@@ -291,13 +345,14 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         return false
     }
 
-    val startForResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
-        if (result.resultCode == RESULT_OK) {
-            Log.d("[로그]", "블루투스 활성화")
-        } else if (result.resultCode == RESULT_CANCELED) {
-            Log.d("[로그]", "사용자 블루투스 활성화 거부")
+    val startForResult =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
+            if (result.resultCode == RESULT_OK) {
+                Log.d("[로그]", "블루투스 활성화")
+            } else if (result.resultCode == RESULT_CANCELED) {
+                Log.d("[로그]", "사용자 블루투스 활성화 거부")
+            }
         }
-    }
 
     private fun clickAndOpenSideBar() {
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
@@ -379,7 +434,11 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                                 }
 
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    registerReceiver(serviceStoppedReceiver, filter, RECEIVER_EXPORTED)
+                                    registerReceiver(
+                                        serviceStoppedReceiver,
+                                        filter,
+                                        RECEIVER_EXPORTED
+                                    )
                                 } else {
                                     registerReceiver(serviceStoppedReceiver, filter)
                                 }

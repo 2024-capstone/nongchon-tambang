@@ -68,7 +68,7 @@
         <ScrollView
             android:id="@+id/user_profile_scroll"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="327dp"
             android:layout_weight="1">
 
             <LinearLayout
@@ -86,8 +86,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="20dp"
-                        android:text="김농촌"
                         android:focusable="true"
+                        android:text="김농촌"
                         android:textSize="30sp"
                         android:textStyle="bold" />
 
@@ -99,8 +99,8 @@
                         android:layout_marginBottom="20dp"
                         android:autofillHints="emailAddress"
                         android:background="@drawable/edittextstyle"
-                        android:hint="아이디(이메일 입력)"
                         android:focusable="true"
+                        android:hint="아이디(이메일 입력)"
                         android:inputType="textEmailAddress"
                         android:padding="10dp" />
 
@@ -117,8 +117,8 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:background="@drawable/edittextstyle"
-                            android:hint="Enter age"
                             android:focusable="true"
+                            android:hint="Enter age"
                             android:inputType="number"
                             android:padding="10dp" />
 
@@ -153,8 +153,8 @@
                             android:layout_width="100dp"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="20dp"
-                            android:paddingVertical="10dp"
                             android:enabled="false"
+                            android:paddingVertical="10dp"
                             android:text="+" />
                     </LinearLayout>
 
