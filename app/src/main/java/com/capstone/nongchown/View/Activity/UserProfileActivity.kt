@@ -62,8 +62,15 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
     private val bluetoothViewModel by viewModels<BluetoothViewModel>()
     private lateinit var pairedDeviceAdapter: PairedDeviceAdapter
-
     private val userprofileViewModel = UserProfileViewModel()
+
+    private lateinit var drawerLayout: DrawerLayout
+    private val emergencyAddButton: Button by lazy {
+        findViewById(R.id.emergency_contact_addButton)
+    }
+    private val saveButton: Button by lazy {
+        findViewById(R.id.user_profile_saveButton)
+    }
 
     private lateinit var name: String
     private lateinit var email: String
@@ -73,12 +80,6 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
     private var isEditable = true
 
-    private val emergencyAddButton: Button by lazy {
-        findViewById(R.id.emergency_contact_addButton)
-    }
-    private val saveButton: Button by lazy {
-        findViewById(R.id.user_profile_saveButton)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -107,9 +108,8 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
             pageScroll.layoutParams = params
         }
 
-        val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
-        clickAndOpenSideBar(drawerLayout)
-        sideBarInnerAction(drawerLayout)
+        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+        clickAndOpenSideBar(toolbar)
 
         val userName = findViewById<EditText>(R.id.user_name)
         userName.addTextChangedListener {
@@ -223,10 +223,6 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-
-        /** sideBar */
-
-
     }
 
     private fun initUserInfo(
@@ -318,11 +314,11 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
         }
 
-    private fun clickAndOpenSideBar(drawerLayout: DrawerLayout) {
-        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+    private fun clickAndOpenSideBar(toolbar: Toolbar) {
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
+        drawerLayout = findViewById(R.id.drawer_layout)
         val toggle = ActionBarDrawerToggle(
             this, drawerLayout, toolbar, R.string.open_nav, R.string.close_nav
         )
@@ -335,9 +331,12 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                 bluetoothViewModel.getPairedDevices()
             }
         }
+//        drawer 동작 선언
+        sideBarInnerAction()
     }
 
-    private fun sideBarInnerAction(drawerLayout: DrawerLayout) {
+    //  drawer 내부의 요소들을 제어할 수 있는 함수
+    private fun sideBarInnerAction() {
         val navigationView = findViewById<NavigationView>(R.id.nav_view)
         navigationView.setNavigationItemSelectedListener(this)
         val navHeader = navigationView.getHeaderView(0)
@@ -347,13 +346,13 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         val disconnectView = navHeader.findViewById<View>(R.id.disconnect)
 
         /** 내부 동작 */
-        addNewDevices(btnDeviceDiscovery, drawerLayout)
+        addNewDevices(btnDeviceDiscovery)
         pairedDevices(recyclerView)
         connectDevice()
         disconnectDevice(disconnectView)
     }
 
-    private fun addNewDevices(btnDeviceDiscovery: Button, drawerLayout: DrawerLayout) {
+    private fun addNewDevices(btnDeviceDiscovery: Button) {
         btnDeviceDiscovery.setOnClickListener {
             checkBluetoothEnabledState {
                 drawerLayout.closeDrawer(GravityCompat.START)
@@ -517,8 +516,4 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
             else -> {}
         }
     }
-
 }
-
-
-
