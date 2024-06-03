@@ -62,12 +62,8 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
     private val bluetoothViewModel by viewModels<BluetoothViewModel>()
     private lateinit var pairedDeviceAdapter: PairedDeviceAdapter
-    private lateinit var recyclerView: RecyclerView
 
     private val userprofileViewModel = UserProfileViewModel()
-
-    private lateinit var pageScroll: ScrollView
-    private lateinit var drawerLayout: DrawerLayout
 
     private lateinit var name: String
     private lateinit var email: String
@@ -89,7 +85,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         enableEdgeToEdge()
         setContentView(R.layout.activity_user_profile)
 
-        pageScroll = findViewById(R.id.user_profile_scroll)
+        val pageScroll = findViewById<ScrollView>(R.id.user_profile_scroll)
         pageScroll.viewTreeObserver.addOnGlobalLayoutListener {
             val rect = Rect()
             pageScroll.getWindowVisibleDisplayFrame(rect)
@@ -110,6 +106,10 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
             }
             pageScroll.layoutParams = params
         }
+
+        val drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
+        clickAndOpenSideBar(drawerLayout)
+        sideBarInnerAction(drawerLayout)
 
         val userName = findViewById<EditText>(R.id.user_name)
         userName.addTextChangedListener {
@@ -225,9 +225,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
 
         /** sideBar */
-        drawerLayout = findViewById(R.id.drawer_layout)
-        clickAndOpenSideBar()
-        sideBarInnerAction()
+
 
     }
 
@@ -320,7 +318,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
         }
 
-    private fun clickAndOpenSideBar() {
+    private fun clickAndOpenSideBar(drawerLayout: DrawerLayout) {
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -339,20 +337,23 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
     }
 
-    private fun sideBarInnerAction() {
+    private fun sideBarInnerAction(drawerLayout: DrawerLayout) {
         val navigationView = findViewById<NavigationView>(R.id.nav_view)
         navigationView.setNavigationItemSelectedListener(this)
         val navHeader = navigationView.getHeaderView(0)
 
+        val btnDeviceDiscovery = navHeader.findViewById<Button>(R.id.btndevicediscovery)
+        val recyclerView = navHeader.findViewById<RecyclerView>(R.id.paireddevice)
+        val disconnectView = navHeader.findViewById<View>(R.id.disconnect)
+
         /** 내부 동작 */
-        addNewDevices(navHeader)
-        pairedDevices(navHeader)
+        addNewDevices(btnDeviceDiscovery, drawerLayout)
+        pairedDevices(recyclerView)
         connectDevice()
-        disconnectDevice(navHeader)
+        disconnectDevice(disconnectView)
     }
 
-    private fun addNewDevices(navHeader: View) {
-        val btnDeviceDiscovery = navHeader.findViewById<Button>(R.id.btndevicediscovery)
+    private fun addNewDevices(btnDeviceDiscovery: Button, drawerLayout: DrawerLayout) {
         btnDeviceDiscovery.setOnClickListener {
             checkBluetoothEnabledState {
                 drawerLayout.closeDrawer(GravityCompat.START)
@@ -361,8 +362,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
     }
 
-    private fun pairedDevices(navHeader: View) {
-        recyclerView = navHeader.findViewById(R.id.paireddevice)
+    private fun pairedDevices(recyclerView: RecyclerView) {
         pairedDeviceAdapter = PairedDeviceAdapter(emptyList())
 
         recyclerView.apply {
@@ -426,10 +426,8 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
     }
 
-    private fun disconnectDevice(navHeader: View) {
-        val disconnectView = navHeader.findViewById<View>(R.id.disconnect)
+    private fun disconnectDevice(disconnectView: View) {
         disconnectView.setOnClickListener {
-
             if (isServiceRunning()) {
                 lifecycleScope.launch {
                     suspendCoroutine { continuation ->
