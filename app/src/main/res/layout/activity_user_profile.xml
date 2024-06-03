@@ -68,99 +68,96 @@
         <ScrollView
             android:id="@+id/user_profile_scroll"
             android:layout_width="match_parent"
-            android:layout_height="327dp"
+            android:layout_height="0dp"
             android:layout_weight="1">
+
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
+                android:layout_height="wrap_content"
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
+
+                <EditText
+                    android:id="@+id/user_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:focusable="true"
+                    android:text="김농촌"
+                    android:textSize="30sp"
+                    android:textStyle="bold" />
+
+                <EditText
+                    android:id="@+id/user_email"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="20dp"
+                    android:layout_marginBottom="20dp"
+                    android:autofillHints="emailAddress"
+                    android:background="@drawable/edittextstyle"
+                    android:focusable="true"
+                    android:hint="아이디(이메일 입력)"
+                    android:inputType="textEmailAddress"
+                    android:padding="10dp" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="20dp">
+
+                    <EditText
+                        android:id="@+id/user_age"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@drawable/edittextstyle"
+                        android:focusable="true"
+                        android:hint="Enter age"
+                        android:inputType="number"
+                        android:padding="10dp" />
+
+                    <Spinner
+                        android:id="@+id/gender"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp"
+                        android:entries="@array/gender_options"
+                        android:padding="10dp" />
+
+                </LinearLayout>
+
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginHorizontal="20dp"
+                    android:layout_marginBottom="20dp"
+                    android:background="#e8e8e8" />
+
+                <LinearLayout
+                    android:id="@+id/emergency_contact_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:gravity="center_horizontal"
                     android:orientation="vertical">
 
-                    <EditText
-                        android:id="@+id/user_name"
-                        android:layout_width="wrap_content"
+
+                    <Button
+                        android:id="@+id/emergency_contact_addButton"
+                        android:layout_width="100dp"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="20dp"
-                        android:focusable="true"
-                        android:text="김농촌"
-                        android:textSize="30sp"
-                        android:textStyle="bold" />
-
-                    <EditText
-                        android:id="@+id/user_email"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginHorizontal="20dp"
-                        android:layout_marginBottom="20dp"
-                        android:autofillHints="emailAddress"
-                        android:background="@drawable/edittextstyle"
-                        android:focusable="true"
-                        android:hint="아이디(이메일 입력)"
-                        android:inputType="textEmailAddress"
-                        android:padding="10dp" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:padding="20dp">
-
-                        <EditText
-                            android:id="@+id/user_age"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:background="@drawable/edittextstyle"
-                            android:focusable="true"
-                            android:hint="Enter age"
-                            android:inputType="number"
-                            android:padding="10dp" />
-
-                        <Spinner
-                            android:id="@+id/gender"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
-                            android:entries="@array/gender_options"
-                            android:padding="10dp" />
-
-                    </LinearLayout>
-
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginHorizontal="20dp"
-                        android:layout_marginBottom="20dp"
-                        android:background="#e8e8e8" />
-
-                    <LinearLayout
-                        android:id="@+id/emergency_contact_list"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_horizontal"
-                        android:orientation="vertical">
-
-
-                        <Button
-                            android:id="@+id/emergency_contact_addButton"
-                            android:layout_width="100dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="20dp"
-                            android:enabled="false"
-                            android:paddingVertical="10dp"
-                            android:text="+" />
-                    </LinearLayout>
-
-
+                        android:enabled="false"
+                        android:paddingVertical="10dp"
+                        android:text="+" />
                 </LinearLayout>
+
+
             </LinearLayout>
+
 
         </ScrollView>
 
@@ -179,12 +176,8 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        app:headerLayout="@layout/nav_header"
-        android:background="@android:color/white"/>
-
-
-
-
+        android:background="@android:color/white"
+        app:headerLayout="@layout/nav_header" />
 
 
 </androidx.drawerlayout.widget.DrawerLayout>

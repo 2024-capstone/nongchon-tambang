@@ -15,8 +15,6 @@ import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
-import android.view.ViewGroup
-import android.view.ViewTreeObserver
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -53,7 +51,6 @@ import com.capstone.nongchown.Utils.showToast
 import com.capstone.nongchown.ViewModel.BluetoothViewModel
 import com.capstone.nongchown.ViewModel.UserProfileViewModel
 import com.google.android.material.navigation.NavigationView
-import com.google.api.Distribution.BucketOptions.Linear
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -63,9 +60,9 @@ import kotlin.coroutines.suspendCoroutine
 @AndroidEntryPoint
 class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
 
-    val bluetoothViewModel by viewModels<BluetoothViewModel>()
-    lateinit var pairedDeviceAdapter: PairedDeviceAdapter
-    lateinit var recyclerView: RecyclerView
+    private val bluetoothViewModel by viewModels<BluetoothViewModel>()
+    private lateinit var pairedDeviceAdapter: PairedDeviceAdapter
+    private lateinit var recyclerView: RecyclerView
 
     private val userprofileViewModel = UserProfileViewModel()
 
@@ -76,7 +73,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
     private lateinit var email: String
     private lateinit var age: String
     private lateinit var gender: String
-    private var isEditble = true
+    private var isEditable = true
     private val emergencyContactList = mutableListOf<String>()
 
     private val emergencyAddButton: Button by lazy {
@@ -86,14 +83,32 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         findViewById(R.id.user_profile_saveButton)
     }
 
-    private val PERMISSIONS_REQUEST_SEND_SMS = 1
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_user_profile)
 
         pageScroll = findViewById(R.id.user_profile_scroll)
-        addGlobalLayoutListener()
+        pageScroll.viewTreeObserver.addOnGlobalLayoutListener {
+            val rect = Rect()
+            pageScroll.getWindowVisibleDisplayFrame(rect)
+            val screenHeight = pageScroll.rootView.height
+            val keypadHeight = screenHeight - rect.bottom
+
+            // 키보드가 나타나면 ScrollView의 bottom margin을 키보드 높이만큼 조정
+            val params = pageScroll.layoutParams as LinearLayout.LayoutParams
+            if (keypadHeight > screenHeight * 0.15) { // 키보드가 올라왔을 때
+                params.bottomMargin = (screenHeight * 0.15).toInt()
+                val location = IntArray(2)
+                currentFocus?.getLocationInWindow(location)
+
+                // EditText가 키보드 위에 오도록 스크롤
+                pageScroll.smoothScrollTo(0, location[1] - rect.top)
+            } else { // 키보드가 내려갔을 때
+                params.bottomMargin = 0
+            }
+            pageScroll.layoutParams = params
+        }
 
         val userName = findViewById<EditText>(R.id.user_name)
         userName.addTextChangedListener {
@@ -114,30 +129,8 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
 
         val userGender = findViewById<Spinner>(R.id.gender)
-//        userGender.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-//            override fun onItemSelected(
-//                parent: AdapterView<*>,
-//                view: View?,
-//                position: Int,
-//                id: Long
-//            ) {
-//                if (userGender.selectedItem.toString() != gender) {
-//                    saveButton.isEnabled = true
-//                }
-//                Log.d("[로그]", "gender changed")
-//            }
-//
-//            override fun onNothingSelected(parent: AdapterView<*>) {
-//                // Do nothing
-//            }
-//        }
 
         val emergencyContacts = findViewById<LinearLayout>(R.id.emergency_contact_list)
-
-        setupFocusChangeListeners(userName)
-        setupFocusChangeListeners(userEmail)
-        setupFocusChangeListeners(userAge)
-        setupFocusChangeListeners(userGender)
 
         emergencyAddButton.setOnClickListener {
             addEmergencyContact(emergencyContacts, "")
@@ -145,16 +138,18 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
         saveButton.setOnClickListener {
             try {
-                if (isEditble) {
+                if (isEditable) {
                     saveButton.text = "수정하기"
                     Log.d("[로그]", "저장 버튼 클릭")
-                    emergencyContactList.clear()
+//                    빈 비상연락처 입력란 제거
                     for (i in emergencyContacts.childCount - 1 downTo 0) {
                         val eContact = emergencyContacts.getChildAt(i)
                         if (eContact is EditText && eContact.text.isEmpty()) {
                             emergencyContacts.removeView(eContact)
                         }
                     }
+//                    로컬에 저장된 비상연락망 데이터를 지우고 입력란에 있는 데이터로 재설정
+                    emergencyContactList.clear()
                     emergencyContacts.children.forEach { emergencyContact ->
                         if (emergencyContact is EditText) {
                             emergencyContactList.add(emergencyContact.text.toString())
@@ -192,21 +187,21 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                     editor.putString("ID", email)
                     editor.apply()
 
-                    isEditble = false
-                    userName.isFocusable = isEditble
-                    userEmail.isFocusable = isEditble
-                    userAge.isFocusable = isEditble
-                    emergencyAddButton.isEnabled = isEditble
+                    isEditable = false
+                    userName.isFocusable = isEditable
+                    userEmail.isFocusable = isEditable
+                    userAge.isFocusable = isEditable
+                    emergencyAddButton.isEnabled = isEditable
                 } else {
                     saveButton.text = "저장하기"
-                    isEditble = true
-                    userName.isFocusable = isEditble
-                    userName.isFocusableInTouchMode = isEditble
-                    userEmail.isFocusable = isEditble
-                    userEmail.isFocusableInTouchMode = isEditble
-                    userAge.isFocusable = isEditble
-                    userAge.isFocusableInTouchMode = isEditble
-                    emergencyAddButton.isEnabled = isEditble
+                    isEditable = true
+                    userName.isFocusable = isEditable
+                    userName.isFocusableInTouchMode = isEditable
+                    userEmail.isFocusable = isEditable
+                    userEmail.isFocusableInTouchMode = isEditable
+                    userAge.isFocusable = isEditable
+                    userAge.isFocusableInTouchMode = isEditable
+                    emergencyAddButton.isEnabled = isEditable
 
                     saveButton.isEnabled = false
 
@@ -234,41 +229,6 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         sideBarInnerAction()
 
     }
-
-    private fun addGlobalLayoutListener() {
-        pageScroll.viewTreeObserver.addOnGlobalLayoutListener(object :
-            ViewTreeObserver.OnGlobalLayoutListener {
-            override fun onGlobalLayout() {
-                val eLinear = findViewById<LinearLayout>(R.id.emergency_contact_list)
-
-                val rect = Rect()
-                pageScroll.getWindowVisibleDisplayFrame(rect)
-                val screenHeight = pageScroll.rootView.height
-                val keypadHeight = screenHeight - rect.bottom
-
-                eLinear.setPadding(0, 0, 0, keypadHeight)
-            }
-        })
-    }
-
-
-    private fun setupFocusChangeListeners(view: View) {
-        view.setOnFocusChangeListener { v, hasFocus ->
-            if (hasFocus) {
-                pageScroll.scrollTo(0, view.top)
-            }
-        }
-    }
-
-    private fun scrollToView(view: View) {
-        pageScroll.post {
-            val rect = Rect()
-            view.getGlobalVisibleRect(rect)
-            val targetY = rect.top - (pageScroll.height / 2)
-            pageScroll.smoothScrollTo(0, targetY)
-        }
-    }
-
 
     private fun initUserInfo(
         userName: EditText,
@@ -299,10 +259,10 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
             for (i: Int in 0..<userInfo.emergencyContactList.size) {
                 addEmergencyContact(emergencyContacts, userInfo.emergencyContactList[i])
             }
-            isEditble = false
-            userName.isFocusable = isEditble
-            userEmail.isFocusable = isEditble
-            userAge.isFocusable = isEditble
+            isEditable = false
+            userName.isFocusable = isEditable
+            userEmail.isFocusable = isEditable
+            userAge.isFocusable = isEditable
             saveButton.text = "수정하기"
 
         }
@@ -320,7 +280,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
             saveButton.isEnabled = true
 
             eContact.setOnTouchListener { v, event ->
-                if (event.action == MotionEvent.ACTION_UP && isEditble) {
+                if (event.action == MotionEvent.ACTION_UP && isEditable) {
                     eContact.isFocusable = true
                     eContact.isFocusableInTouchMode = true
                     val clearDrawable = eContact.compoundDrawablesRelative[2]
@@ -334,24 +294,26 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
         eContact.setText(emergencyContact)
         emergencyContacts.addView(eContact, emergencyContacts.childCount - 1)
-        setupFocusChangeListeners(eContact)
     }
 
 
     /** sideBar */
     override fun onNavigationItemSelected(item: MenuItem): Boolean { // X
-        when (item.itemId) {
-        }
         return false
     }
 
-    val startForResult =
+    private val startForResult =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
-            if (result.resultCode == RESULT_OK) {
-                Log.d("[로그]", "블루투스 활성화")
-            } else if (result.resultCode == RESULT_CANCELED) {
-                Log.d("[로그]", "사용자 블루투스 활성화 거부")
+            when (result.resultCode) {
+                RESULT_OK -> {
+                    Log.d("[로그]", "블루투스 활성화")
+                }
+
+                RESULT_CANCELED -> {
+                    Log.d("[로그]", "사용자 블루투스 활성화 거부")
+                }
             }
+
         }
 
     private fun clickAndOpenSideBar() {
@@ -395,7 +357,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
     }
 
-    fun pairedDevices(navHeader: View) {
+    private fun pairedDevices(navHeader: View) {
         recyclerView = navHeader.findViewById(R.id.paireddevice)
         pairedDeviceAdapter = PairedDeviceAdapter(emptyList())
 
@@ -538,15 +500,19 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         handleConnectionResult(flag)
     }
 
-    fun handleConnectionResult(flag: ConnectResult) {
-        if (flag == ConnectResult.CONNECT) {
-            showToast("연결되었습니다.")
-            drawerLayout.closeDrawer(GravityCompat.START)
-            startForegroundService()
-        } else if (flag == ConnectResult.DISCONNECT) {
-            showToast("연결 실패했습니다.")
-        } else {
+    private fun handleConnectionResult(flag: ConnectResult) {
+        when (flag) {
+            ConnectResult.CONNECT -> {
+                showToast("연결되었습니다.")
+                drawerLayout.closeDrawer(GravityCompat.START)
+                startForegroundService()
+            }
 
+            ConnectResult.DISCONNECT -> {
+                showToast("연결 실패했습니다.")
+            }
+
+            else -> {}
         }
     }
 
