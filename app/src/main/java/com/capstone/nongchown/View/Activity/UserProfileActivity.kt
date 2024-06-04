@@ -56,6 +56,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import kotlin.math.abs
 
 @AndroidEntryPoint
 class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
@@ -64,10 +65,10 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
     private lateinit var pairedDeviceAdapter: PairedDeviceAdapter
     private val userprofileViewModel = UserProfileViewModel()
 
+    private lateinit var emergencyContactLayout: LinearLayout
     private lateinit var drawerLayout: DrawerLayout
-    private val emergencyAddButton: Button by lazy {
-        findViewById(R.id.emergency_contact_addButton)
-    }
+
+    private lateinit var pageScroll: ScrollView
     private val saveButton: Button by lazy {
         findViewById(R.id.user_profile_saveButton)
     }
@@ -80,62 +81,55 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
     private var isEditable = true
 
+    private fun calculateRectOnScreen(view: View): Rect {
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        return Rect(
+            location[0],
+            location[1],
+            location[0] + view.measuredWidth,
+            location[1] + view.measuredHeight
+        )
+    }
+
+    private fun ScrollView.computeDistanceToView(view: View): Int {
+        return abs(calculateRectOnScreen(this).top - (this.scrollY + calculateRectOnScreen(view).top))
+    }
+
+    private fun ScrollView.scrollToView(view: View) {
+        val y = computeDistanceToView(view)
+//        감으로 키보드 끝과 View 사이의 거리를 덜 스크롤
+        this.scrollTo(0, y - 650)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_user_profile)
 
-        val pageScroll = findViewById<ScrollView>(R.id.user_profile_scroll)
-        pageScroll.viewTreeObserver.addOnGlobalLayoutListener {
-            val rect = Rect()
-            pageScroll.getWindowVisibleDisplayFrame(rect)
-            val screenHeight = pageScroll.rootView.height
-            val keypadHeight = screenHeight - rect.bottom
-
-            // 키보드가 나타나면 ScrollView의 bottom margin을 키보드 높이만큼 조정
-            val params = pageScroll.layoutParams as LinearLayout.LayoutParams
-            if (keypadHeight > screenHeight * 0.15) { // 키보드가 올라왔을 때
-                params.bottomMargin = (screenHeight * 0.15).toInt()
-                val location = IntArray(2)
-                currentFocus?.getLocationInWindow(location)
-
-                // EditText가 키보드 위에 오도록 스크롤
-                pageScroll.smoothScrollTo(0, location[1] - rect.top)
-            } else { // 키보드가 내려갔을 때
-                params.bottomMargin = 0
-            }
-            pageScroll.layoutParams = params
-        }
+        pageScroll = findViewById(R.id.user_profile_scroll)
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         clickAndOpenSideBar(toolbar)
 
         val userName = findViewById<EditText>(R.id.user_name)
-        userName.addTextChangedListener {
-            Log.d("[로그]", "name changed")
-            saveButton.isEnabled = true
-        }
-
         val userEmail = findViewById<EditText>(R.id.user_email)
-        userEmail.addTextChangedListener {
-            Log.d("[로그]", "email changed")
-            saveButton.isEnabled = true
-        }
-
         val userAge = findViewById<EditText>(R.id.user_age)
-        userAge.addTextChangedListener {
-            Log.d("[로그]", "age changed")
-            saveButton.isEnabled = true
-        }
+
+        userName.addTextChangedListener { editTextChangedListener("userName") }
+        userEmail.addTextChangedListener { editTextChangedListener("userEmail") }
+        userAge.addTextChangedListener { editTextChangedListener("userAge") }
+
+
+        userName.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) pageScroll.scrollToView(v) }
+        userEmail.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) pageScroll.scrollToView(v) }
+        userAge.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) pageScroll.scrollToView(v) }
 
         val userGender = findViewById<Spinner>(R.id.gender)
 
-        val emergencyContacts = findViewById<LinearLayout>(R.id.emergency_contact_list)
-
-        emergencyAddButton.setOnClickListener {
-            addEmergencyContact(emergencyContacts, "")
-        }
+        emergencyContactLayout = findViewById(R.id.emergency_contact_list)
+        val emergencyAddButton = findViewById<Button>(R.id.emergency_contact_addButton)
+        emergencyAddButton.setOnClickListener { addEmergencyContact(emergencyContactLayout, "") }
 
         saveButton.setOnClickListener {
             try {
@@ -143,15 +137,15 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                     saveButton.text = "수정하기"
                     Log.d("[로그]", "저장 버튼 클릭")
 //                    빈 비상연락처 입력란 제거
-                    for (i in emergencyContacts.childCount - 1 downTo 0) {
-                        val eContact = emergencyContacts.getChildAt(i)
+                    for (i in emergencyContactLayout.childCount - 1 downTo 0) {
+                        val eContact = emergencyContactLayout.getChildAt(i)
                         if (eContact is EditText && eContact.text.isEmpty()) {
-                            emergencyContacts.removeView(eContact)
+                            emergencyContactLayout.removeView(eContact)
                         }
                     }
 //                    로컬에 저장된 비상연락망 데이터를 지우고 입력란에 있는 데이터로 재설정
                     emergencyContactList.clear()
-                    emergencyContacts.children.forEach { emergencyContact ->
+                    emergencyContactLayout.children.forEach { emergencyContact ->
                         if (emergencyContact is EditText) {
                             emergencyContactList.add(emergencyContact.text.toString())
                         }
@@ -178,9 +172,12 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                     userEmail.setText(userInfo.email)
                     userAge.setText(userInfo.age)
                     userGender.setSelection((if (userInfo.gender == "남") 0 else 1))
-                    emergencyContacts.removeViews(0, emergencyContacts.childCount - 1)
+                    emergencyContactLayout.removeViews(0, emergencyContactLayout.childCount - 1)
                     for (i: Int in 0..<userInfo.emergencyContactList.size) {
-                        addEmergencyContact(emergencyContacts, userInfo.emergencyContactList[i])
+                        addEmergencyContact(
+                            emergencyContactLayout,
+                            userInfo.emergencyContactList[i]
+                        )
                     }
 
                     val sharedPreferences = getSharedPreferences("user", Context.MODE_PRIVATE)
@@ -189,23 +186,15 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                     editor.apply()
 
                     isEditable = false
-                    userName.isFocusable = isEditable
-                    userEmail.isFocusable = isEditable
-                    userAge.isFocusable = isEditable
+                    setFocusable(userName, userEmail, userAge)
                     emergencyAddButton.isEnabled = isEditable
                 } else {
                     saveButton.text = "저장하기"
                     isEditable = true
-                    userName.isFocusable = isEditable
-                    userName.isFocusableInTouchMode = isEditable
-                    userEmail.isFocusable = isEditable
-                    userEmail.isFocusableInTouchMode = isEditable
-                    userAge.isFocusable = isEditable
-                    userAge.isFocusableInTouchMode = isEditable
+                    setFocusable(userName, userEmail, userAge)
                     emergencyAddButton.isEnabled = isEditable
 
                     saveButton.isEnabled = false
-
                 }
 
             } catch (e: IllegalArgumentException) {
@@ -215,7 +204,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
         //        앱 시작 시 데이터베이스로부터 사용자 데이터를 받아온다.(있다고 가정)
         initUserInfo(
-            userName, userEmail, userAge, userGender, emergencyContacts
+            userName, userEmail, userAge, userGender
         )
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.user_profile)) { v, insets ->
@@ -225,12 +214,27 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
     }
 
+    private fun editTextChangedListener(message: String) {
+        Log.d("[로그]", "$message changed")
+        saveButton.isEnabled = true
+    }
+
+    private fun setFocusable(nameView: EditText, emailView: EditText, ageView: EditText) {
+        nameView.isFocusable = isEditable
+        nameView.isFocusableInTouchMode = isEditable
+
+        emailView.isFocusable = isEditable
+        emailView.isFocusableInTouchMode = isEditable
+
+        ageView.isFocusable = isEditable
+        ageView.isFocusableInTouchMode = isEditable
+    }
+
     private fun initUserInfo(
         userName: EditText,
         userEmail: EditText,
         userAge: EditText,
-        userGender: Spinner,
-        emergencyContacts: LinearLayout
+        userGender: Spinner
     ) {
 
         Log.d("[로그]", "initializing")
@@ -251,12 +255,10 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
             userAge.setText(userInfo.age)
             userGender.setSelection((if (userInfo.gender == "남") 0 else 1))
             for (i: Int in 0..<userInfo.emergencyContactList.size) {
-                addEmergencyContact(emergencyContacts, userInfo.emergencyContactList[i])
+                addEmergencyContact(emergencyContactLayout, userInfo.emergencyContactList[i])
             }
             isEditable = false
-            userName.isFocusable = isEditable
-            userEmail.isFocusable = isEditable
-            userAge.isFocusable = isEditable
+            setFocusable(userName, userEmail, userAge)
             saveButton.text = "수정하기"
 
         }
@@ -273,16 +275,18 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
             inflater.inflate(R.layout.emergency_contact_item, emergencyContacts, false) as EditText
 
         emergencyContact.addTextChangedListener {
-            Log.d("[로그]", "emergencyContact changed")
-            saveButton.isEnabled = true
+            editTextChangedListener("emergencyContact")
 
+//            View 우측의 'x' 아이콘 클릭 시 내부 text
             emergencyContact.setOnTouchListener { v, event ->
                 if (event.action == MotionEvent.ACTION_UP && isEditable) {
                     val eContact = v as EditText
+
                     eContact.isFocusable = true
                     eContact.isFocusableInTouchMode = true
-                    val clearDrawable = eContact.compoundDrawablesRelative[2]
-                    if (event.rawX >= (v.right - clearDrawable.bounds.width())) {
+
+
+                    if (event.rawX >= (v.right - eContact.compoundDrawablesRelative[2].bounds.width())) {
                         eContact.setText("")
                         return@setOnTouchListener true
                     }
@@ -292,6 +296,11 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
         emergencyContact.setText(emergencyContactNumber)
         emergencyContacts.addView(emergencyContact, emergencyContacts.childCount - 1)
+        emergencyContact.setOnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) pageScroll.scrollToView(
+                v
+            )
+        }
     }
 
 

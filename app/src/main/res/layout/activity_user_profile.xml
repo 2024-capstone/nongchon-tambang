@@ -25,13 +25,12 @@
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp">
+            android:layout_height="wrap_content">
 
             <ImageView
                 android:id="@+id/user_backgroundImage"
                 android:layout_width="match_parent"
-                android:layout_height="250dp"
+                android:layout_height="200dp"
                 android:scaleType="centerCrop"
                 android:src="@drawable/farm"
                 app:layout_constraintStart_toStartOf="parent"
@@ -50,18 +49,6 @@
                 app:layout_constraintStart_toStartOf="@id/user_backgroundImage"
                 app:layout_constraintTop_toTopOf="@id/user_backgroundImage"
                 app:layout_constraintVertical_bias="1.3" />
-            <!--        <ImageView-->
-            <!--            android:id="@+id/imageView2"-->
-            <!--            android:layout_width="120dp"-->
-            <!--            android:layout_height="120dp"-->
-            <!--            android:background="@drawable/circular_imagebackground"-->
-            <!--            android:scaleType="centerCrop"-->
-            <!--            android:src="@drawable/grandfather"-->
-            <!--            app:layout_constraintBottom_toBottomOf="@id/imageView1"-->
-            <!--            app:layout_constraintEnd_toEndOf="@id/imageView1"-->
-            <!--            app:layout_constraintStart_toStartOf="@id/imageView1"-->
-            <!--            app:layout_constraintTop_toTopOf="@id/imageView1"-->
-            <!--            app:layout_constraintVertical_bias="1.3" />-->
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -71,10 +58,10 @@
             android:layout_height="0dp"
             android:layout_weight="1">
 
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="500dp"
                 android:gravity="center_horizontal"
                 android:orientation="vertical">
 
@@ -82,7 +69,7 @@
                     android:id="@+id/user_name"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="20dp"
+                    android:layout_marginBottom="10dp"
                     android:focusable="true"
                     android:text="김농촌"
                     android:textSize="30sp"
@@ -93,7 +80,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginHorizontal="20dp"
-                    android:layout_marginBottom="20dp"
+                    android:layout_marginBottom="10dp"
                     android:autofillHints="emailAddress"
                     android:background="@drawable/edittextstyle"
                     android:focusable="true"
@@ -106,7 +93,8 @@
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:padding="20dp">
+                    android:paddingHorizontal="20dp"
+                    android:paddingVertical="10dp">
 
                     <EditText
                         android:id="@+id/user_age"
@@ -155,6 +143,9 @@
                         android:text="+" />
                 </LinearLayout>
 
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="100dp" />
 
             </LinearLayout>
 
