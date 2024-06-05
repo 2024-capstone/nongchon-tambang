@@ -97,15 +97,7 @@ class UserProfileViewModel : ViewModel() {
 
     fun userProfileSave(userInfo: UserInfo): UserInfo {
         try {
-            val validUserInfo = validateUserInfo(
-                UserInfo(
-                    userInfo.name,
-                    userInfo.email,
-                    userInfo.age,
-                    userInfo.gender,
-                    userInfo.emergencyContactList
-                )
-            )
+            val validUserInfo = validateUserInfo(userInfo)
             firebaseComm.updateOrCreateUser(validUserInfo)
             return validUserInfo
         } catch (e: IllegalArgumentException) {

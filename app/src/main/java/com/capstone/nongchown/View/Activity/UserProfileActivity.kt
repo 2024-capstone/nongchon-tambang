@@ -31,7 +31,6 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.view.GravityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.children
 import androidx.core.widget.addTextChangedListener
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.Lifecycle
@@ -61,23 +60,19 @@ import kotlin.math.abs
 @AndroidEntryPoint
 class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
 
-    private val bluetoothViewModel by viewModels<BluetoothViewModel>()
     private lateinit var pairedDeviceAdapter: PairedDeviceAdapter
-    private val userprofileViewModel = UserProfileViewModel()
+    private val bluetoothViewModel: BluetoothViewModel by viewModels()
+    private val userprofileViewModel: UserProfileViewModel by viewModels()
 
-    private lateinit var emergencyContactLayout: LinearLayout
     private lateinit var drawerLayout: DrawerLayout
-
     private lateinit var pageScroll: ScrollView
-    private val saveButton: Button by lazy {
-        findViewById(R.id.user_profile_saveButton)
-    }
+    private lateinit var saveButton: Button
 
-    private lateinit var name: String
-    private lateinit var email: String
-    private lateinit var age: String
-    private lateinit var gender: String
-    private val emergencyContactList = mutableListOf<String>()
+    private lateinit var nameView: EditText
+    private lateinit var emailView: EditText
+    private lateinit var ageView: EditText
+    private lateinit var genderView: Spinner
+    private lateinit var emergencyContactLayout: LinearLayout
 
     private var isEditable = true
 
@@ -112,86 +107,71 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         clickAndOpenSideBar(toolbar)
 
-        val userName = findViewById<EditText>(R.id.user_name)
-        val userEmail = findViewById<EditText>(R.id.user_email)
-        val userAge = findViewById<EditText>(R.id.user_age)
-
-        userName.addTextChangedListener { editTextChangedListener("userName") }
-        userEmail.addTextChangedListener { editTextChangedListener("userEmail") }
-        userAge.addTextChangedListener { editTextChangedListener("userAge") }
-
-
-        userName.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) pageScroll.scrollToView(v) }
-        userEmail.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) pageScroll.scrollToView(v) }
-        userAge.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) pageScroll.scrollToView(v) }
-
-        val userGender = findViewById<Spinner>(R.id.gender)
-
+        nameView = findViewById(R.id.user_name)
+        emailView = findViewById(R.id.user_email)
+        ageView = findViewById(R.id.user_age)
+        genderView = findViewById(R.id.gender)
         emergencyContactLayout = findViewById(R.id.emergency_contact_list)
-        val emergencyAddButton = findViewById<Button>(R.id.emergency_contact_addButton)
-        emergencyAddButton.setOnClickListener { addEmergencyContact(emergencyContactLayout, "") }
 
+        nameView.addTextChangedListener { editTextChangedListener("userName") }
+        emailView.addTextChangedListener { editTextChangedListener("userEmail") }
+        ageView.addTextChangedListener { editTextChangedListener("userAge") }
+
+        nameView.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) pageScroll.scrollToView(v) }
+        emailView.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) pageScroll.scrollToView(v) }
+        ageView.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) pageScroll.scrollToView(v) }
+
+        val emergencyAddButton = findViewById<Button>(R.id.emergency_contact_addButton)
+        emergencyAddButton.setOnClickListener { addEmergencyContact("") }
+
+        saveButton = findViewById(R.id.user_profile_saveButton)
         saveButton.setOnClickListener {
             try {
                 if (isEditable) {
                     saveButton.text = "수정하기"
                     Log.d("[로그]", "저장 버튼 클릭")
 //                    빈 비상연락처 입력란 제거
+                    val emergencyContactList = mutableListOf<String>()
                     for (i in emergencyContactLayout.childCount - 1 downTo 0) {
-                        val eContact = emergencyContactLayout.getChildAt(i)
-                        if (eContact is EditText && eContact.text.isEmpty()) {
+                        val eContact = emergencyContactLayout.getChildAt(i) as EditText
+                        if (eContact.text.isEmpty()) {
                             emergencyContactLayout.removeView(eContact)
-                        }
-                    }
-//                    로컬에 저장된 비상연락망 데이터를 지우고 입력란에 있는 데이터로 재설정
-                    emergencyContactList.clear()
-                    emergencyContactLayout.children.forEach { emergencyContact ->
-                        if (emergencyContact is EditText) {
-                            emergencyContactList.add(emergencyContact.text.toString())
+                        } else {
+                            emergencyContactList.add(eContact.text.toString())
                         }
                     }
 
                     val userInfo = UserProfileViewModel().userProfileSave(
                         UserInfo(
-                            userName.text.toString(),
-                            userEmail.text.toString(),
-                            userAge.text.toString(),
-                            userGender.selectedItem.toString(),
+                            nameView.text.toString(),
+                            emailView.text.toString(),
+                            ageView.text.toString(),
+                            genderView.selectedItem.toString(),
                             emergencyContactList
                         )
                     )
-                    name = userInfo.name
-                    email = userInfo.email
-                    age = userInfo.age
-                    gender = userInfo.gender
-                    emergencyContactList.clear()
-                    Log.d("[로그]", "emergencyContactList.clear(): $emergencyContactList")
-                    emergencyContactList.addAll(userInfo.emergencyContactList)
 
-                    userName.setText(userInfo.name)
-                    userEmail.setText(userInfo.email)
-                    userAge.setText(userInfo.age)
-                    userGender.setSelection((if (userInfo.gender == "남") 0 else 1))
-                    emergencyContactLayout.removeViews(0, emergencyContactLayout.childCount - 1)
+                    nameView.setText(userInfo.name)
+                    emailView.setText(userInfo.email)
+                    ageView.setText(userInfo.age)
+                    genderView.setSelection((if (userInfo.gender == "남") 0 else 1))
+                    emergencyContactLayout.removeAllViews()
                     for (i: Int in 0..<userInfo.emergencyContactList.size) {
-                        addEmergencyContact(
-                            emergencyContactLayout,
-                            userInfo.emergencyContactList[i]
-                        )
+                        addEmergencyContact(userInfo.emergencyContactList[i])
                     }
 
                     val sharedPreferences = getSharedPreferences("user", Context.MODE_PRIVATE)
                     val editor = sharedPreferences.edit()
-                    editor.putString("ID", email)
+                    editor.putString("ID", userInfo.email)
                     editor.apply()
 
                     isEditable = false
-                    setFocusable(userName, userEmail, userAge)
+                    setFocusable(nameView, emailView, ageView)
                     emergencyAddButton.isEnabled = isEditable
                 } else {
                     saveButton.text = "저장하기"
                     isEditable = true
-                    setFocusable(userName, userEmail, userAge)
+                    setFocusable(nameView, emailView, ageView)
                     emergencyAddButton.isEnabled = isEditable
 
                     saveButton.isEnabled = false
@@ -203,9 +183,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
 
         //        앱 시작 시 데이터베이스로부터 사용자 데이터를 받아온다.(있다고 가정)
-        initUserInfo(
-            userName, userEmail, userAge, userGender
-        )
+        initUserInfo()
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.user_profile)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -230,49 +208,46 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         ageView.isFocusableInTouchMode = isEditable
     }
 
-    private fun initUserInfo(
-        userName: EditText,
-        userEmail: EditText,
-        userAge: EditText,
-        userGender: Spinner
-    ) {
+    private fun initUserInfo() {
 
         Log.d("[로그]", "initializing")
 
         val sharedPreferences = getSharedPreferences("user", Context.MODE_PRIVATE)
         val userID = sharedPreferences.getString("ID", "")
-        email = userID.toString()
-        if (email == "") {
-            saveButton.text = "저장하기"
+        if (userID.toString() == "") {
+            isEditable = false
+            setFocusable(nameView, emailView, ageView)
+            saveButton.text = "등록하기"
             return
         }
 
         lifecycleScope.launch {
-            val userInfo = userprofileViewModel.loadStoredData(email)
+            val userInfo = userprofileViewModel.loadStoredData(userID.toString())
 
-            userName.setText(userInfo.name)
-            userEmail.setText(userInfo.email)
-            userAge.setText(userInfo.age)
-            userGender.setSelection((if (userInfo.gender == "남") 0 else 1))
+            nameView.setText(userInfo.name)
+            emailView.setText(userInfo.email)
+            ageView.setText(userInfo.age)
+            genderView.setSelection((if (userInfo.gender == "남") 0 else 1))
             for (i: Int in 0..<userInfo.emergencyContactList.size) {
-                addEmergencyContact(emergencyContactLayout, userInfo.emergencyContactList[i])
+                addEmergencyContact(userInfo.emergencyContactList[i])
             }
-            isEditable = false
-            setFocusable(userName, userEmail, userAge)
-            saveButton.text = "수정하기"
 
+            isEditable = false
+            setFocusable(nameView, emailView, ageView)
+            saveButton.text = "수정하기"
         }
         Log.d("[로그]", "initializing complete")
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun addEmergencyContact(
-        emergencyContacts: LinearLayout,
-        emergencyContactNumber: String
-    ) {
+    private fun addEmergencyContact(contact: String) {
         val inflater = LayoutInflater.from(this)
         val emergencyContact =
-            inflater.inflate(R.layout.emergency_contact_item, emergencyContacts, false) as EditText
+            inflater.inflate(
+                R.layout.emergency_contact_item,
+                emergencyContactLayout,
+                false
+            ) as EditText
 
         emergencyContact.addTextChangedListener {
             editTextChangedListener("emergencyContact")
@@ -294,12 +269,10 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                 false
             }
         }
-        emergencyContact.setText(emergencyContactNumber)
-        emergencyContacts.addView(emergencyContact, emergencyContacts.childCount - 1)
+        emergencyContact.setText(contact)
+        emergencyContactLayout.addView(emergencyContact, emergencyContactLayout.childCount)
         emergencyContact.setOnFocusChangeListener { v, hasFocus ->
-            if (hasFocus) pageScroll.scrollToView(
-                v
-            )
+            if (hasFocus) pageScroll.scrollToView(v)
         }
     }
 
@@ -324,10 +297,10 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
 
     private fun clickAndOpenSideBar(toolbar: Toolbar) {
+        drawerLayout = findViewById(R.id.drawer_layout)
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        drawerLayout = findViewById(R.id.drawer_layout)
         val toggle = ActionBarDrawerToggle(
             this, drawerLayout, toolbar, R.string.open_nav, R.string.close_nav
         )
