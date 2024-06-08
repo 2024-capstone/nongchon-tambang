@@ -76,26 +76,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
     private var isEditable = true
 
-    private fun calculateRectOnScreen(view: View): Rect {
-        val location = IntArray(2)
-        view.getLocationOnScreen(location)
-        return Rect(
-            location[0],
-            location[1],
-            location[0] + view.measuredWidth,
-            location[1] + view.measuredHeight
-        )
-    }
 
-    private fun ScrollView.computeDistanceToView(view: View): Int {
-        return abs(calculateRectOnScreen(this).top - (this.scrollY + calculateRectOnScreen(view).top))
-    }
-
-    private fun ScrollView.scrollToView(view: View) {
-        val y = computeDistanceToView(view)
-//        감으로 키보드 끝과 View 사이의 거리를 덜 스크롤
-        this.scrollTo(0, y - 650)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -190,6 +171,27 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+    }
+
+    private fun calculateRectOnScreen(view: View): Rect {
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        return Rect(
+            location[0],
+            location[1],
+            location[0] + view.measuredWidth,
+            location[1] + view.measuredHeight
+        )
+    }
+
+    private fun ScrollView.computeDistanceToView(view: View): Int {
+        return abs(calculateRectOnScreen(this).top - (this.scrollY + calculateRectOnScreen(view).top))
+    }
+
+    private fun ScrollView.scrollToView(view: View) {
+        val y = computeDistanceToView(view)
+//        감으로 키보드 끝과 View 사이의 거리를 덜 스크롤
+        this.scrollTo(0, y - 650)
     }
 
     private fun editTextChangedListener(message: String) {
