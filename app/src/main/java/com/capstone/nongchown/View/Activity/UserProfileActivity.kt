@@ -7,6 +7,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -30,7 +31,6 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.view.GravityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.children
 import androidx.core.widget.addTextChangedListener
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.Lifecycle
@@ -55,148 +55,107 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import kotlin.math.abs
 
 @AndroidEntryPoint
 class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
 
-    val bluetoothViewModel by viewModels<BluetoothViewModel>()
-    lateinit var pairedDeviceAdapter: PairedDeviceAdapter
-    lateinit var recyclerView: RecyclerView
+    private lateinit var pairedDeviceAdapter: PairedDeviceAdapter
+    private val bluetoothViewModel: BluetoothViewModel by viewModels()
+    private val userprofileViewModel: UserProfileViewModel by viewModels()
 
-    private val userprofileViewModel = UserProfileViewModel()
-
-    private lateinit var pageScroll: ScrollView
     private lateinit var drawerLayout: DrawerLayout
+    private lateinit var pageScroll: ScrollView
+    private lateinit var saveButton: Button
 
-    private lateinit var name: String
-    private lateinit var email: String
-    private lateinit var age: String
-    private lateinit var gender: String
-    private var isEditble = true
-    private val emergencyContactList = mutableListOf<String>()
+    private lateinit var nameView: EditText
+    private lateinit var emailView: EditText
+    private lateinit var ageView: EditText
+    private lateinit var genderView: Spinner
+    private lateinit var emergencyContactLayout: LinearLayout
 
-    private val emergencyAddButton: Button by lazy {
-        findViewById(R.id.emergency_contact_addButton)
-    }
-    private val saveButton: Button by lazy {
-        findViewById(R.id.user_profile_saveButton)
-    }
+    private var isEditable = true
 
-    private val PERMISSIONS_REQUEST_SEND_SMS = 1
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_user_profile)
 
-
         pageScroll = findViewById(R.id.user_profile_scroll)
 
-        val userName = findViewById<EditText>(R.id.user_name)
-        userName.addTextChangedListener {
-            Log.d("[로그]", "name changed")
-            saveButton.isEnabled = true
-        }
+        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+        clickAndOpenSideBar(toolbar)
 
-        val userEmail = findViewById<EditText>(R.id.user_email)
-        userEmail.addTextChangedListener {
-            Log.d("[로그]", "email changed")
-            saveButton.isEnabled = true
-        }
+        nameView = findViewById(R.id.user_name)
+        emailView = findViewById(R.id.user_email)
+        ageView = findViewById(R.id.user_age)
+        genderView = findViewById(R.id.gender)
+        emergencyContactLayout = findViewById(R.id.emergency_contact_list)
 
-        val userAge = findViewById<EditText>(R.id.user_age)
-        userAge.addTextChangedListener {
-            Log.d("[로그]", "age changed")
-            saveButton.isEnabled = true
-        }
+        nameView.addTextChangedListener { editTextChangedListener("userName") }
+        emailView.addTextChangedListener { editTextChangedListener("userEmail") }
+        ageView.addTextChangedListener { editTextChangedListener("userAge") }
 
-        val userGender = findViewById<Spinner>(R.id.gender)
-//        userGender.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-//            override fun onItemSelected(
-//                parent: AdapterView<*>,
-//                view: View?,
-//                position: Int,
-//                id: Long
-//            ) {
-//                if (userGender.selectedItem.toString() != gender) {
-//                    saveButton.isEnabled = true
-//                }
-//                Log.d("[로그]", "gender changed")
-//            }
-//
-//            override fun onNothingSelected(parent: AdapterView<*>) {
-//                // Do nothing
-//            }
-//        }
+        nameView.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) pageScroll.scrollToView(v) }
+        emailView.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) pageScroll.scrollToView(v) }
+        ageView.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) pageScroll.scrollToView(v) }
 
-        val emergencyContacts = findViewById<LinearLayout>(R.id.emergency_contact_list)
+        val emergencyAddButton = findViewById<Button>(R.id.emergency_contact_addButton)
+        emergencyAddButton.setOnClickListener { addEmergencyContact("") }
 
-        emergencyAddButton.setOnClickListener {
-            addEmergencyContact(emergencyContacts, "")
-        }
-
+        saveButton = findViewById(R.id.user_profile_saveButton)
         saveButton.setOnClickListener {
             try {
-                if(isEditble){
-                    saveButton.text="수정하기"
+                if (isEditable) {
+                    saveButton.text = "수정하기"
                     Log.d("[로그]", "저장 버튼 클릭")
-                    emergencyContactList.clear()
-                    for (i in emergencyContacts.childCount - 1 downTo 0) {
-                        val eContact = emergencyContacts.getChildAt(i)
-                        if (eContact is EditText && eContact.text.isEmpty()) {
-                            emergencyContacts.removeView(eContact)
-                        }
-                    }
-                    emergencyContacts.children.forEach { emergencyContact ->
-                        if (emergencyContact is EditText) {
-                            emergencyContactList.add(emergencyContact.text.toString())
+//                    빈 비상연락처 입력란 제거
+                    val emergencyContactList = mutableListOf<String>()
+                    for (i in emergencyContactLayout.childCount - 1 downTo 0) {
+                        val eContact = emergencyContactLayout.getChildAt(i) as EditText
+                        if (eContact.text.isEmpty()) {
+                            emergencyContactLayout.removeView(eContact)
+                        } else {
+                            emergencyContactList.add(eContact.text.toString())
                         }
                     }
 
                     val userInfo = UserProfileViewModel().userProfileSave(
                         UserInfo(
-                            userName.text.toString(), userEmail.text.toString(), userAge.text.toString(), userGender.selectedItem.toString(), emergencyContactList
+                            nameView.text.toString(),
+                            emailView.text.toString(),
+                            ageView.text.toString(),
+                            genderView.selectedItem.toString(),
+                            emergencyContactList
                         )
                     )
-                    name = userInfo.name
-                    email = userInfo.email
-                    age = userInfo.age
-                    gender = userInfo.gender
-                    emergencyContactList.clear()
-                    Log.d("[로그]", "emergencyContactList.clear(): $emergencyContactList")
-                    emergencyContactList.addAll(userInfo.emergencyContactList)
 
-                    userName.setText(userInfo.name)
-                    userEmail.setText(userInfo.email)
-                    userAge.setText(userInfo.age)
-                    userGender.setSelection((if (userInfo.gender == "남") 0 else 1))
-                    emergencyContacts.removeViews(0, emergencyContacts.childCount - 1)
+                    nameView.setText(userInfo.name)
+                    emailView.setText(userInfo.email)
+                    ageView.setText(userInfo.age)
+                    genderView.setSelection((if (userInfo.gender == "남") 0 else 1))
+                    emergencyContactLayout.removeAllViews()
                     for (i: Int in 0..<userInfo.emergencyContactList.size) {
-                        addEmergencyContact(emergencyContacts, userInfo.emergencyContactList[i])
+                        addEmergencyContact(userInfo.emergencyContactList[i])
                     }
 
                     val sharedPreferences = getSharedPreferences("user", Context.MODE_PRIVATE)
                     val editor = sharedPreferences.edit()
-                    editor.putString("ID", email)
+                    editor.putString("ID", userInfo.email)
                     editor.apply()
 
-                    isEditble=false
-                    userName.isFocusable=isEditble
-                    userEmail.isFocusable = isEditble
-                    userAge.isFocusable=isEditble
-                    emergencyAddButton.isEnabled=isEditble
-                } else{
-                    saveButton.text="저장하기"
-                    isEditble=true
-                    userName.isFocusable=isEditble
-                    userName.isFocusableInTouchMode = isEditble
-                    userEmail.isFocusable = isEditble
-                    userEmail.isFocusableInTouchMode = isEditble
-                    userAge.isFocusable=isEditble
-                    userAge.isFocusableInTouchMode = isEditble
-                    emergencyAddButton.isEnabled=isEditble
+                    isEditable = false
+                    setFocusable(nameView, emailView, ageView)
+                    emergencyAddButton.isEnabled = isEditable
+                } else {
+                    saveButton.text = "저장하기"
+                    isEditable = true
+                    setFocusable(nameView, emailView, ageView)
+                    emergencyAddButton.isEnabled = isEditable
 
                     saveButton.isEnabled = false
-
                 }
 
             } catch (e: IllegalArgumentException) {
@@ -205,73 +164,106 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
 
         //        앱 시작 시 데이터베이스로부터 사용자 데이터를 받아온다.(있다고 가정)
-        initUserInfo(
-            userName, userEmail, userAge, userGender, emergencyContacts
-        )
+        initUserInfo()
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.user_profile)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-
-        /** sideBar */
-        drawerLayout = findViewById<DrawerLayout>(R.id.drawer_layout)
-        clickAndOpenSideBar()
-        sideBarInnerAction()
-
     }
 
-    private fun initUserInfo(
-        userName: EditText, userEmail: EditText, userAge: EditText, userGender: Spinner, emergencyContacts: LinearLayout
-    ) {
+    private fun calculateRectOnScreen(view: View): Rect {
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        return Rect(
+            location[0],
+            location[1],
+            location[0] + view.measuredWidth,
+            location[1] + view.measuredHeight
+        )
+    }
+
+    private fun ScrollView.computeDistanceToView(view: View): Int {
+        return abs(calculateRectOnScreen(this).top - (this.scrollY + calculateRectOnScreen(view).top))
+    }
+
+    private fun ScrollView.scrollToView(view: View) {
+        val y = computeDistanceToView(view)
+//        감으로 키보드 끝과 View 사이의 거리를 덜 스크롤
+        this.scrollTo(0, y - 650)
+    }
+
+    private fun editTextChangedListener(message: String) {
+        Log.d("[로그]", "$message changed")
+        saveButton.isEnabled = true
+    }
+
+    private fun setFocusable(nameView: EditText, emailView: EditText, ageView: EditText) {
+        nameView.isFocusable = isEditable
+        nameView.isFocusableInTouchMode = isEditable
+
+        emailView.isFocusable = isEditable
+        emailView.isFocusableInTouchMode = isEditable
+
+        ageView.isFocusable = isEditable
+        ageView.isFocusableInTouchMode = isEditable
+    }
+
+    private fun initUserInfo() {
 
         Log.d("[로그]", "initializing")
 
         val sharedPreferences = getSharedPreferences("user", Context.MODE_PRIVATE)
         val userID = sharedPreferences.getString("ID", "")
-        email = userID.toString()
-        if(email==""){
-            saveButton.text="저장하기"
+        if (userID.toString() == "") {
+            isEditable = false
+            setFocusable(nameView, emailView, ageView)
+            saveButton.text = "등록하기"
             return
         }
 
-
         lifecycleScope.launch {
-            val userInfo = userprofileViewModel.loadStoredData(email)
+            val userInfo = userprofileViewModel.loadStoredData(userID.toString())
 
-            userName.setText(userInfo.name)
-            userEmail.setText(userInfo.email)
-            userAge.setText(userInfo.age)
-            userGender.setSelection((if (userInfo.gender == "남") 0 else 1))
+            nameView.setText(userInfo.name)
+            emailView.setText(userInfo.email)
+            ageView.setText(userInfo.age)
+            genderView.setSelection((if (userInfo.gender == "남") 0 else 1))
             for (i: Int in 0..<userInfo.emergencyContactList.size) {
-                addEmergencyContact(emergencyContacts, userInfo.emergencyContactList[i])
+                addEmergencyContact(userInfo.emergencyContactList[i])
             }
-            isEditble=false
-            userName.isFocusable=isEditble
-            userEmail.isFocusable = isEditble
-            userAge.isFocusable=isEditble
-            saveButton.text= "수정하기"
 
+            isEditable = false
+            setFocusable(nameView, emailView, ageView)
+            saveButton.text = "수정하기"
         }
         Log.d("[로그]", "initializing complete")
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun addEmergencyContact(emergencyContacts: LinearLayout, emergencyContact: String) {
+    private fun addEmergencyContact(contact: String) {
         val inflater = LayoutInflater.from(this)
-        val eContact = inflater.inflate(R.layout.emergency_contact_item, emergencyContacts, false) as EditText
+        val emergencyContact =
+            inflater.inflate(
+                R.layout.emergency_contact_item,
+                emergencyContactLayout,
+                false
+            ) as EditText
 
-        eContact.addTextChangedListener {
-            Log.d("[로그]", "emergencyContact changed")
-            saveButton.isEnabled = true
+        emergencyContact.addTextChangedListener {
+            editTextChangedListener("emergencyContact")
 
-            eContact.setOnTouchListener { v, event ->
-                if (event.action == MotionEvent.ACTION_UP && isEditble) {
-                    eContact.isFocusable=true
+//            View 우측의 'x' 아이콘 클릭 시 내부 text
+            emergencyContact.setOnTouchListener { v, event ->
+                if (event.action == MotionEvent.ACTION_UP && isEditable) {
+                    val eContact = v as EditText
+
+                    eContact.isFocusable = true
                     eContact.isFocusableInTouchMode = true
-                    val clearDrawable = eContact.compoundDrawablesRelative[2]
-                    if (clearDrawable != null && event.rawX >= (eContact.right - clearDrawable.bounds.width())) {
+
+
+                    if (event.rawX >= (v.right - eContact.compoundDrawablesRelative[2].bounds.width())) {
                         eContact.setText("")
                         return@setOnTouchListener true
                     }
@@ -279,28 +271,35 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                 false
             }
         }
-        eContact.setText(emergencyContact)
-        emergencyContacts.addView(eContact, emergencyContacts.childCount - 1)
+        emergencyContact.setText(contact)
+        emergencyContactLayout.addView(emergencyContact, emergencyContactLayout.childCount)
+        emergencyContact.setOnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) pageScroll.scrollToView(v)
+        }
     }
 
 
     /** sideBar */
     override fun onNavigationItemSelected(item: MenuItem): Boolean { // X
-        when (item.itemId) {
-        }
         return false
     }
 
-    val startForResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
-        if (result.resultCode == RESULT_OK) {
-            Log.d("[로그]", "블루투스 활성화")
-        } else if (result.resultCode == RESULT_CANCELED) {
-            Log.d("[로그]", "사용자 블루투스 활성화 거부")
-        }
-    }
+    private val startForResult =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
+            when (result.resultCode) {
+                RESULT_OK -> {
+                    Log.d("[로그]", "블루투스 활성화")
+                }
 
-    private fun clickAndOpenSideBar() {
-        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+                RESULT_CANCELED -> {
+                    Log.d("[로그]", "사용자 블루투스 활성화 거부")
+                }
+            }
+
+        }
+
+    private fun clickAndOpenSideBar(toolbar: Toolbar) {
+        drawerLayout = findViewById(R.id.drawer_layout)
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
@@ -316,22 +315,28 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                 bluetoothViewModel.getPairedDevices()
             }
         }
+//        drawer 동작 선언
+        sideBarInnerAction()
     }
 
+    //  drawer 내부의 요소들을 제어할 수 있는 함수
     private fun sideBarInnerAction() {
         val navigationView = findViewById<NavigationView>(R.id.nav_view)
         navigationView.setNavigationItemSelectedListener(this)
         val navHeader = navigationView.getHeaderView(0)
 
+        val btnDeviceDiscovery = navHeader.findViewById<Button>(R.id.btndevicediscovery)
+        val recyclerView = navHeader.findViewById<RecyclerView>(R.id.paireddevice)
+        val disconnectView = navHeader.findViewById<View>(R.id.disconnect)
+
         /** 내부 동작 */
-        addNewDevices(navHeader)
-        pairedDevices(navHeader)
+        addNewDevices(btnDeviceDiscovery)
+        pairedDevices(recyclerView)
         connectDevice()
-        disconnectDevice(navHeader)
+        disconnectDevice(disconnectView)
     }
 
-    private fun addNewDevices(navHeader: View) {
-        val btnDeviceDiscovery = navHeader.findViewById<Button>(R.id.btndevicediscovery)
+    private fun addNewDevices(btnDeviceDiscovery: Button) {
         btnDeviceDiscovery.setOnClickListener {
             checkBluetoothEnabledState {
                 drawerLayout.closeDrawer(GravityCompat.START)
@@ -340,8 +345,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
     }
 
-    fun pairedDevices(navHeader: View) {
-        recyclerView = navHeader.findViewById(R.id.paireddevice)
+    private fun pairedDevices(recyclerView: RecyclerView) {
         pairedDeviceAdapter = PairedDeviceAdapter(emptyList())
 
         recyclerView.apply {
@@ -365,7 +369,7 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                 checkBluetoothEnabledState {
                     lifecycleScope.launch {
                         if (isServiceRunning()) {
-                            suspendCoroutine<Unit> { continuation ->
+                            suspendCoroutine { continuation ->
                                 val filter = IntentFilter("SERVICE_STOPPED")
                                 val serviceStoppedReceiver = object : BroadcastReceiver() {
                                     override fun onReceive(context: Context?, intent: Intent?) {
@@ -379,7 +383,11 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                                 }
 
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    registerReceiver(serviceStoppedReceiver, filter, RECEIVER_EXPORTED)
+                                    registerReceiver(
+                                        serviceStoppedReceiver,
+                                        filter,
+                                        RECEIVER_EXPORTED
+                                    )
                                 } else {
                                     registerReceiver(serviceStoppedReceiver, filter)
                                 }
@@ -401,13 +409,11 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
     }
 
-    private fun disconnectDevice(navHeader: View) {
-        val disconnectView = navHeader.findViewById<View>(R.id.disconnect)
+    private fun disconnectDevice(disconnectView: View) {
         disconnectView.setOnClickListener {
-
             if (isServiceRunning()) {
                 lifecycleScope.launch {
-                    suspendCoroutine<Unit> { continuation ->
+                    suspendCoroutine { continuation ->
                         val filter = IntentFilter("SERVICE_STOPPED")
 
                         val serviceStoppedReceiver = object : BroadcastReceiver() {
@@ -479,19 +485,19 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         handleConnectionResult(flag)
     }
 
-    fun handleConnectionResult(flag: ConnectResult) {
-        if (flag == ConnectResult.CONNECT) {
-            showToast("연결되었습니다.")
-            drawerLayout.closeDrawer(GravityCompat.START)
-            startForegroundService()
-        } else if (flag == ConnectResult.DISCONNECT) {
-            showToast("연결 실패했습니다.")
-        } else {
+    private fun handleConnectionResult(flag: ConnectResult) {
+        when (flag) {
+            ConnectResult.CONNECT -> {
+                showToast("연결되었습니다.")
+                drawerLayout.closeDrawer(GravityCompat.START)
+                startForegroundService()
+            }
 
+            ConnectResult.DISCONNECT -> {
+                showToast("연결 실패했습니다.")
+            }
+
+            else -> {}
         }
     }
-
 }
-
-
-
