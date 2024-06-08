@@ -77,7 +77,6 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
     private var isEditable = true
 
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -93,10 +92,6 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         ageView = findViewById(R.id.user_age)
         genderView = findViewById(R.id.gender)
         emergencyContactLayout = findViewById(R.id.emergency_contact_list)
-
-        nameView.addTextChangedListener { editTextChangedListener("userName") }
-        emailView.addTextChangedListener { editTextChangedListener("userEmail") }
-        ageView.addTextChangedListener { editTextChangedListener("userAge") }
 
         nameView.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) pageScroll.scrollToView(v) }
         emailView.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) pageScroll.scrollToView(v) }
@@ -154,8 +149,6 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                     isEditable = true
                     setFocusable(nameView, emailView, ageView)
                     emergencyAddButton.isEnabled = isEditable
-
-                    saveButton.isEnabled = false
                 }
 
             } catch (e: IllegalArgumentException) {
@@ -192,11 +185,6 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         val y = computeDistanceToView(view)
 //        감으로 키보드 끝과 View 사이의 거리를 덜 스크롤
         this.scrollTo(0, y - 650)
-    }
-
-    private fun editTextChangedListener(message: String) {
-        Log.d("[로그]", "$message changed")
-        saveButton.isEnabled = true
     }
 
     private fun setFocusable(nameView: EditText, emailView: EditText, ageView: EditText) {
@@ -252,8 +240,6 @@ class UserProfileActivity : AppCompatActivity(), NavigationView.OnNavigationItem
             ) as EditText
 
         emergencyContact.addTextChangedListener {
-            editTextChangedListener("emergencyContact")
-
 //            View 우측의 'x' 아이콘 클릭 시 내부 text
             emergencyContact.setOnTouchListener { v, event ->
                 if (event.action == MotionEvent.ACTION_UP && isEditable) {
